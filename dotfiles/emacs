@@ -1,0 +1,223 @@
+;;========================================
+;; start the emacsserver that listens to emacsclient
+(server-start)
+;(setq confirm-kill-emacs 'yes-or-no-p)
+(setq visible-bell t);
+
+(add-to-list 'load-path "~/.emacs.d/el-get/el-get")
+
+(unless (require 'el-get nil 'noerror)
+  (with-current-buffer
+      (url-retrieve-synchronously
+       "https://raw.github.com/dimitri/el-get/master/el-get-install.el")
+    (goto-char (point-max))
+    (eval-print-last-sexp)))
+
+(add-to-list 'el-get-recipe-path "~/.emacs.d/el-get-user/recipes")
+(el-get 'sync)
+
+
+(el-get 'sync)
+(setq yas-global-mode 1)
+(color-theme-tomorrow)
+(require 'ido)
+(ido-mode t)
+
+(setq exec-path (cons "/usr/local/bin/" exec-path))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;屏幕大小
+
+(defun set-frame-size-according-to-resolution ()
+  (interactive)
+  (if window-system
+  (progn
+    ;; use 120 char wide window for largeish displays
+    ;; and smaller 80 column windows for smaller displays
+    ;; pick whatever numbers make sense for you
+    (if (> (x-display-pixel-width) 1280)
+           (add-to-list 'default-frame-alist (cons 'width 180))
+           (add-to-list 'default-frame-alist (cons 'width 120)))
+    ;; for the height, subtract a couple hundred pixels
+    ;; from the screen height (for panels, menubars and
+    ;; whatnot), then divide by the height of a char to
+    ;; get the height we want
+    (add-to-list 'default-frame-alist 
+         (cons 'height (/ (- (x-display-pixel-height) 200)
+                             (frame-char-height)))))))
+(set-frame-size-according-to-resolution)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; recentf stuff
+; hippie-expand
+(global-set-key (kbd "<M-tab>") 'hippie-expand)
+ 
+(setq hippie-expand-try-functions-list
+    '(try-expand-dabbrev-visible
+         try-expand-dabbrev-visible
+         try-expand-dabbrev-all-buffers
+         try-expand-dabbrev-from-kill
+         try-complete-file-name-partially
+         try-complete-file-name
+         try-expand-all-abbrevs
+         try-expand-list
+         try-expand-line
+         try-complete-lisp-symbol-partially
+         try-complete-lisp-symbol
+         )
+    )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; recentf stuff
+(require 'recentf)
+(recentf-mode 1)
+(setq recentf-max-menu-items 25)
+(global-set-key "\C-x\ \C-r" 'recentf-open-files)
+;;{{{ recentf customization
+;; Change the file in which recentf saves information from
+;; ~/.recentf to something else
+(setq recentf-save-file "~/.recentf")
+
+;; Set the maximum number of items saved to 10
+(setq recentf-max-saved-items 20)
+
+;; Change the menu title from the default "Open Recent" to
+;; something else
+(setq recentf-menu-title "Recent Files")
+
+;; Set the max items on the menu to 5
+(setq recentf-max-menu-items 15)
+
+
+;;}}}
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; * Orgmode
+;; The following lines are always needed. Choose your own keys.
+(add-to-list 'auto-mode-alist '("\\.org\\'" . org-mode)) ; not needed since Emacs 22.2
+(add-hook 'org-mode-hook 'turn-on-font-lock) ; not needed when global-font-lock-mode is on
+(global-set-key "\C-cl" 'org-store-link)
+(global-set-key "\C-ca" 'org-agenda)
+(global-set-key "\C-cb" 'org-iswitchb)
+(define-key global-map "\C-cc" 'org-capture)
+(setq org-agenda-files (list "~/Dropbox/Private/Org-pool/Work.org"
+                             "~/Dropbox/Private/Org-pool/School.org" 
+                             "~/Dropbox/Private/Org-pool/Home.org"
+			     "~/Dropbox/Private/Org-pool/gtd.org"
+			     ))
+(setq org-default-notes-file 
+                  (concat "~/Dropbox/Private/Org-pool/HAP.org"))
+(setq org-capture-templates
+ '(("t" "Todo" entry (file+headline (concat "~/Dropbox/Private/Org-pool/gtd.org") "Tasks")
+        "* TODO %?\n %i\n %a")
+   ("j" "Journal" entry (file+datetree (concat "~/Dropbox/Private/Org-pool/HAP.org"))
+        "* %?\nEntered on %U\n %i\n %a"))) 
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; * Markdown
+(setq auto-mode-alist
+    (cons '("\\.markdown" . markdown-mode) auto-mode-alist))
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; * Define-GUI
+    (defun fname-title-string ()
+         "Return the file name of current buffer, using ~ if under home directory"
+         (let
+             ((fname (or
+                      (buffer-file-name (current-buffer))
+                      (buffer-name))))
+           (when (string-match (getenv "HOME") fname)
+             (setq fname (replace-match "~" t t fname))        )
+           fname))
+
+
+    (setq frame-title-format             
+                    '(:eval (concat (user-login-name) "@" (system-name) "[Emacs" 
+                     (nth 2 (split-string (version))) "]  " (fname-title-string))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; * tabbar
+(require 'tabbar)  
+(tabbar-mode 1)  
+(defun tabbar-buffer-groups ()
+  "Return the list of group names the current buffer belongs to.
+This function is a custom function for tabbar-mode's tabbar-buffer-groups.
+This function group all buffers into 3 groups:
+Those Dired, those user buffer, and those emacs buffer.
+Emacs buffer are those starting with “*”."
+  (list
+   (cond
+    ((string-equal "*" (substring (buffer-name) 0 1))
+     "Emacs Buffer"
+     )
+    ((eq major-mode 'dired-mode)
+     "Dired"
+     )
+    (t
+     "User Buffer"
+     )
+    ))) 
+
+(setq tabbar-buffer-groups-function 'tabbar-buffer-groups)
+
+(global-set-key [M-s-left] 'tabbar-backward)
+(global-set-key [M-s-right] 'tabbar-forward)
+
+;; * face
+(custom-set-variables
+ '(tabbar-separator (quote (0.5)))
+ '(tabbar-use-images niln))
+(defmacro tabbar-customize-faces-macro (foreground background sforeground uforeground ubackground)
+`(custom-set-faces
+ '(tabbar-button ((t (:inherit tabbar-default))))
+ '(tabbar-default ((((class color grayscale) (background dark)) (:inherit variable-pitch :background ,background :foreground ,foreground :height 0.8))))
+ '(tabbar-highlight ((t (:overline ,background))))
+ '(tabbar-selected ((t (:inherit tabbar-default :background "background-color-at-point" :foreground ,sforeground))))
+ '(tabbar-unselected ((t (:inherit tabbar-default :background ,ubackground :foreground ,uforeground)))))
+)
+
+
+(tabbar-customize-faces-macro 
+ "gray50"                               ;foreground
+ "gray15"                               ;background
+ "yellow"                               ;sforeground
+ "gray60"                               ;uforeground
+ "gray25"                               ;ubackground
+ )
+
+
+;; Add a buffer modification state indicator in the tab label, and place a
+ ;; space around the label to make it looks less crowd.
+ (defadvice tabbar-buffer-tab-label (after fixup_tab_label_space_and_flag activate)
+   (setq ad-return-value
+         (if (and (buffer-modified-p (tabbar-tab-value tab))
+                  (buffer-file-name (tabbar-tab-value tab)))
+             (concat " + " (concat ad-return-value " "))
+           (concat " " (concat ad-return-value " ")))))
+ ;; Called each time the modification state of the buffer changed.
+ (defun ztl-modification-state-change ()
+   (tabbar-set-template tabbar-current-tabset nil)
+   (tabbar-display-update))
+ ;; First-change-hook is called BEFORE the change is made.
+ (defun ztl-on-buffer-modification ()
+   (set-buffer-modified-p t)
+   (ztl-modification-state-change))
+ (add-hook 'after-save-hook 'ztl-modification-state-change)
+ ;; This doesn't work for revert, I don't know.
+ ;;(add-hook 'after-revert-hook 'ztl-modification-state-change)
+ (add-hook 'first-change-hook 'ztl-on-buffer-modification)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;cdlatex settings;
